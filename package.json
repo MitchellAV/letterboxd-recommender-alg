@@ -1,0 +1,42 @@
+{
+	"name": "letterboxd-recommender-alg",
+	"version": "1.0.0",
+	"description": "",
+	"main": "index.js",
+	"scripts": {
+		"start": "node --max-old-space-size=2000 server.js",
+		"dev": "nodemon server.js",
+		"update": "node cron-job.js"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/MitchellAV/letterboxd-recommender-alg.git"
+	},
+	"keywords": [],
+	"author": "",
+	"license": "ISC",
+	"dependencies": {
+		"axios": "^0.21.1",
+		"cheerio": "^1.0.0-rc.5",
+		"cors": "^2.8.5",
+		"dotenv": "^8.2.0",
+		"ejs": "^3.1.5",
+		"express": "^4.17.1",
+		"express-validator": "^6.10.0",
+		"fs": "0.0.1-security",
+		"mathjs": "^8.1.1",
+		"mongoose": "^5.11.16",
+		"puppeteer": "^5.5.0",
+		"puppeteer-extra": "^3.1.15",
+		"puppeteer-extra-plugin-adblocker": "^2.11.10",
+		"puppeteer-extra-plugin-recaptcha": "^3.3.0",
+		"puppeteer-extra-plugin-stealth": "^2.6.7"
+	},
+	"devDependencies": {
+		"nodemon": "^2.0.6"
+	},
+	"bugs": {
+		"url": "https://github.com/MitchellAV/letterboxd-recommender-alg/issues"
+	},
+	"homepage": "https://github.com/MitchellAV/letterboxd-recommender-alg#readme"
+}
