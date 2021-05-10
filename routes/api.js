@@ -18,11 +18,12 @@ const {
 	calc_tfidf
 } = require("../util/user-recommendation");
 const tag_blacklist = [
-	"aftercreditsstinger",
-	"duringcreditsstinger",
-	"based on novel or book",
-	"woman director",
-	"anime"
+	// "aftercreditsstinger",
+	// "duringcreditsstinger",
+	// "based on novel or book",
+	// "woman director",
+	// "anime",
+	// "based on young adult novel"
 ];
 
 router.post(

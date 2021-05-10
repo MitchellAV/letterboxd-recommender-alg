@@ -7,7 +7,7 @@ const { cosine_similarity } = require("./recommendation-functions");
 const new_or_update_user = () => {};
 const reset_user_recommendations = async (username) => {
 	try {
-		await Movie.aggregate([
+		await Movie.updateMany({}, [
 			{
 				$set: {
 					score: {
