@@ -1,10 +1,13 @@
 const dotenv = require("dotenv").config();
 const express = require("express");
+const cors = require("cors");
 
 const mongoose = require("mongoose");
 const Movie = require("./models/movie");
 
 const app = express();
+
+app.use(cors());
 
 // Body Parser Middleware
 app.use(express.urlencoded({ extended: false }));
@@ -12,6 +15,10 @@ app.use(express.json());
 
 // Routes
 app.use("/api", require("./routes/api"));
+app.use((err, req, res, next) => {
+	console.error(err);
+	res.status(err.status).json(err);
+});
 
 mongoose
 	.connect(process.env.MONGODB_URI, {

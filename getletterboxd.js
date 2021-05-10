@@ -68,15 +68,37 @@ const get_movie_info = async (browser, $, el) => {
 	return movie;
 };
 
+const get_movies_from_page = async (children, browser, $) => {
+	let promises = [];
+	let maxAsync = 5;
+	let movies = [];
+	for (let i = 0; i < children.length; i++) {
+		const el = children[i];
+		promises.push(get_movie_info(browser, $, el));
+		if (promises.length === maxAsync) {
+			let movies_from_page = await Promise.all(promises);
+			promises = [];
+			movies = movies.concat(movies_from_page);
+		}
+	}
+	if (promises.length !== 0) {
+		let movies_from_page = await Promise.all(promises);
+		movies = movies.concat(movies_from_page);
+	}
+	return movies;
+};
+
 const getLetterboxdUserMovies = async (user) => {
 	let output = [];
 	try {
 		const browser = await puppeteer.launch({
-			headless: false
+			headless: true
 		});
 		const page = await browser.newPage();
 		let pagenum = 1;
 		let finished = false;
+		let promises = [];
+		let maxAsync = 5;
 		while (!finished) {
 			const url = `https://letterboxd.com/${user}/films/page/${pagenum}`;
 
@@ -88,40 +110,36 @@ const getLetterboxdUserMovies = async (user) => {
 
 			const children = $("ul.poster-list").children();
 			if (children.length !== 0) {
-				let promises = [];
-				let maxAsync = 5;
-				for (let i = 0; i < children.length; i++) {
-					const el = children[i];
-					promises.push(get_movie_info(browser, $, el));
-					if (promises.length === maxAsync) {
-						let movies_from_page = await Promise.all(promises);
-						promises = [];
-						output = output.concat(movies_from_page);
-					}
-				}
-				if (promises.length !== 0) {
-					let movies_from_page = await Promise.all(promises);
-					output = output.concat(movies_from_page);
-				}
-				pagenum++;
+				promises.push(get_movies_from_page(children, browser, $));
 			} else {
 				console.log("No more movies left.");
 				finished = true;
 			}
+			if (promises.length === maxAsync) {
+				let movies_from_pages = await Promise.all(promises);
+				promises = [];
+				output = output.concat(movies_from_pages.flat());
+			}
+			pagenum++;
+		}
+		if (promises.length !== 0) {
+			let movies_from_pages = await Promise.all(promises);
+			promises = [];
+			output = output.concat(movies_from_pages.flat());
 		}
 		await browser.close();
+		console.log("Finished getting movies from user.");
+		return output;
 	} catch (err) {
 		console.error(err);
 	}
-	console.log("Finished getting movies from user.");
-	return output;
 };
 
 const isRealLetterboxdUser = async (user) => {
 	let userfound = false;
 	try {
 		const browser = await puppeteer.launch({
-			headless: false
+			headless: true
 		});
 		const page = await browser.newPage();
 
@@ -137,10 +155,10 @@ const isRealLetterboxdUser = async (user) => {
 		if (exists !== 0) userfound = true;
 
 		await browser.close();
+		return userfound;
 	} catch (err) {
 		console.error(err);
 	}
-	return userfound;
 };
 
 module.exports = { getLetterboxdUserMovies, isRealLetterboxdUser };

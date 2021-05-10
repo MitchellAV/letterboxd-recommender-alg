@@ -21,6 +21,7 @@ const update_user_movies = (movieArray, username) => {
 			}
 		});
 	}
+	return newUser;
 };
 
 module.exports = { update_user_movies };
