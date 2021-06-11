@@ -83,7 +83,7 @@ const get_user_movie_tags = async (user_movie_ids, tag_blacklist) => {
 
 	user_tags = user_tags.sort((a, b) => a.idf - b.idf);
 	user_tags = user_tags.filter((tag) => !tag_blacklist.includes(tag._id));
-	user_tags = user_tags.slice(0, 500);
+	user_tags = user_tags.slice(0, 1000);
 	user_tags = user_tags.map((tag) => tag._id);
 
 	return [user_tags, user_tag_map];
@@ -211,7 +211,7 @@ const determine_accuracy = async (
 		}
 		return result;
 	}
-	all_movies_tags = all_movies_tags.slice(0, 500);
+	// all_movies_tags = all_movies_tags.slice(0, 500);
 	all_movies_tags = all_movies_tags.map((tag) => tag._id);
 
 	let all_movies_tags_map = new Map();
@@ -238,14 +238,12 @@ const calc_tfidf = (
 			// movieavgrating
 			let tfidf = tag.idf;
 			let corrected_vote_average =
-				(movie.vote_count * movie.vote_average +
-					movie.vote_average +
-					0) /
+				(movie.vote_average * (movie.vote_count + 1)) /
 				(movie.vote_count + 2);
-			let ratingWeight = Math.pow(
-				corrected_vote_average / all_movies_average,
-				5
-			);
+
+			const correction = corrected_vote_average - all_movies_average;
+			let ratingWeight = 0;
+			if (correction >= 0) ratingWeight = Math.exp(correction);
 
 			movieVector.set([0, index], tfidf * ratingWeight);
 		}

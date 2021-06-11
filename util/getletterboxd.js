@@ -6,7 +6,11 @@ const StealthPlugin = require("puppeteer-extra-plugin-stealth");
 const AdblockerPlugin = require("puppeteer-extra-plugin-adblocker");
 puppeteer.use(AdblockerPlugin());
 puppeteer.use(StealthPlugin());
-const Movie = require("./models/movie");
+const Movie = require("../models/movie");
+const browser_settings = {
+	headless: true,
+	args: ["--no-sandbox", "--disable-setuid-sandbox"]
+};
 
 const get_movie_info = async (browser, $, el) => {
 	const movie = {
@@ -91,9 +95,7 @@ const get_movies_from_page = async (children, browser, $) => {
 const getLetterboxdUserMovies = async (user) => {
 	let output = [];
 	try {
-		const browser = await puppeteer.launch({
-			headless: true
-		});
+		const browser = await puppeteer.launch(browser_settings);
 		const page = await browser.newPage();
 		let pagenum = 1;
 		let finished = false;
@@ -138,9 +140,8 @@ const getLetterboxdUserMovies = async (user) => {
 const isRealLetterboxdUser = async (user) => {
 	let userfound = false;
 	try {
-		const browser = await puppeteer.launch({
-			headless: true
-		});
+		const browser = await puppeteer.launch(browser_settings);
+
 		const page = await browser.newPage();
 
 		const url = `https://letterboxd.com/${user}/films/`;

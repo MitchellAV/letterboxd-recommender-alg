@@ -5,25 +5,27 @@ const math = require("mathjs");
 const Movie = require("../models/movie");
 const User = require("../models/user");
 const Tag = require("../models/tag");
-const { update_user_movies } = require("../api_helper");
+const { update_user_movies } = require("../util/api_helper");
 const {
 	getLetterboxdUserMovies,
 	isRealLetterboxdUser
-} = require("../getletterboxd");
+} = require("../util/getletterboxd");
 const { cosine_similarity } = require("../util/recommendation-functions");
 const {
 	reset_user_recommendations,
 	get_user_movie_tags,
-	determine_accuracy,
 	calc_tfidf
 } = require("../util/user-recommendation");
+const { update_user_status } = require("../util/database-functions");
 const tag_blacklist = [
-	// "aftercreditsstinger",
-	// "duringcreditsstinger",
-	// "based on novel or book",
+	"aftercreditsstinger",
+	"duringcreditsstinger",
+	"based on novel or book",
 	// "woman director",
-	// "anime",
-	// "based on young adult novel"
+	"anime"
+	// "based on young adult novel",
+	// "live action and animation",
+	// "female protagonist"
 ];
 
 router.post(
@@ -32,7 +34,9 @@ router.post(
 		body("username", "Please enter your letterboxd username.")
 			.trim()
 			.isLength({ min: 1 })
-			.escape()
+			.toLowerCase()
+			.escape(),
+		body("accuracy", "").trim().escape().isIn(["high", "med", "low"])
 	],
 	async (req, res, next) => {
 		const errors = validationResult(req);
@@ -47,7 +51,7 @@ router.post(
 				error: errors.array()
 			});
 		} else {
-			const username = req.body.username;
+			const { username, accuracy } = req.body;
 			let user_profile;
 			try {
 				user_profile = await User.findById(username).lean();
@@ -83,24 +87,78 @@ router.post(
 						// save user to database users collection
 						await userToSave.save();
 					} catch (err) {
+						const [status, statusErr] = await update_user_status(
+							username,
+							"failed"
+						);
+						if (statusErr)
+							return next({
+								message:
+									"Unable to connect to database to change user status",
+								status: 500,
+								error: statusErr
+							});
 						return next({
 							message: "Unable to to save user to database",
 							status: 500,
 							error: err
 						});
 					}
+					const [status, statusErr] = await update_user_status(
+						username,
+						"working"
+					);
+					if (statusErr)
+						return next({
+							message:
+								"Unable to connect to database to change user status",
+							status: 500,
+							error: statusErr
+						});
 				} else {
 					return next({
 						message: "Letterboxd user does not exist",
 						status: 404,
-						error: err
+						error: []
 					});
 				}
 			} else {
+				if (user_profile.status === "working") {
+					return next({
+						message:
+							"Currently in progress of creating recommendations for user",
+						status: 500,
+						error: []
+					});
+				} else {
+					const [status, statusErr] = await update_user_status(
+						username,
+						"working"
+					);
+					if (statusErr)
+						return next({
+							message:
+								"Unable to connect to database to change user status",
+							status: 500,
+							error: statusErr
+						});
+				}
+
 				let movieArray;
 				try {
 					movieArray = await getLetterboxdUserMovies(username);
 				} catch (err) {
+					const [status, statusErr] = await update_user_status(
+						username,
+						"failed"
+					);
+					if (statusErr)
+						return next({
+							message:
+								"Unable to connect to database to change user status",
+							status: 500,
+							error: statusErr
+						});
 					return next({
 						message:
 							"Unable to get user's movies from letterboxd.com",
@@ -116,6 +174,17 @@ router.post(
 					await User.updateOne({ _id: username }, newUser);
 				} catch (err) {
 					console.error(err);
+					const [status, statusErr] = await update_user_status(
+						username,
+						"failed"
+					);
+					if (statusErr)
+						return next({
+							message:
+								"Unable to connect to database to change user status",
+							status: 500,
+							error: statusErr
+						});
 					return next({
 						message: "Unable to save user to database",
 						status: 500,
@@ -137,12 +206,12 @@ router.post(
 		body("username", "Please enter your letterboxd username.")
 			.trim()
 			.isLength({ min: 1 })
-			.escape()
+			.escape(),
 
-		// 	body(
-		// 		"accuracy",
-		// 		"Please select how accurate you want your recommendations to be."
-		// 	).isIn(["high", "med", "low"])
+		body(
+			"accuracy",
+			"Please select how accurate you want your recommendations to be."
+		).isIn(["high", "med", "low"])
 	],
 	async (req, res, next) => {
 		const errors = validationResult(req);
@@ -159,10 +228,13 @@ router.post(
 			});
 		} else {
 			const username = req.body.username;
-			const accuracy = "high";
 			try {
 				await reset_user_recommendations(username);
 			} catch (err) {
+				const [status, statusErr] = await update_user_status(
+					username,
+					"failed"
+				);
 				return next({
 					message: "Unable to reset recommendations",
 					status: 500,
@@ -173,6 +245,10 @@ router.post(
 			try {
 				user_profile = await User.findById(username).lean();
 			} catch (err) {
+				const [status, statusErr] = await update_user_status(
+					username,
+					"failed"
+				);
 				return next({
 					message: "Unable to find user in database",
 					status: 404,
@@ -192,7 +268,7 @@ router.post(
 			user_tags.forEach((tag, i) => {
 				tags_to_index_map.set(tag, i);
 			});
-			//-----------------------------------------------------------
+
 			const general_tags = await Tag.aggregate([
 				{
 					$match: {
@@ -202,27 +278,12 @@ router.post(
 					}
 				}
 			]);
-			// all_movies_tags = all_movies_tags.sort((a, b) => a.idf - b.idf);
 
 			const movie_tags_to_idf_map = new Map();
 			general_tags.forEach((tag) => {
 				movie_tags_to_idf_map.set(tag._id, tag.idf);
 			});
 
-			// all_movies_tags = all_movies_tags.filter(
-			// 	(tag) => !tag_blacklist.includes(tag._id)
-			// );
-
-			//-------------------------------------------------------------
-			// const [
-			// 	all_movies_tags,
-			// 	tags_to_index_map
-			// ] = await determine_accuracy(
-			// 	username,
-			// 	accuracy,
-			// 	movies,
-			// 	tag_blacklist
-			// );
 			const movies = req.app.get("MOVIES").filter((movie) => {
 				let found = false;
 				for (const tag of movie.tags) {
@@ -270,10 +331,11 @@ router.post(
 					if (index !== undefined) {
 						// avg_user_movie_rating
 						let tfidf = user_tags_to_idf_map.get(tag._id);
-						let ratingWeight = Math.pow(
-							movie.userRating / avg_user_movie_rating,
-							5
-						);
+						const correction =
+							movie.userRating - avg_user_movie_rating;
+						let ratingWeight = 0;
+						if (correction >= 0)
+							ratingWeight = Math.exp(correction);
 						movieVector.set([0, index], tfidf * ratingWeight);
 					}
 				});
@@ -299,7 +361,7 @@ router.post(
 
 			let writes = [];
 
-			let maxAsync = 10000;
+			let maxAsync = 1000;
 
 			for (let i = 0; i < movies.length; i++) {
 				const movie = movies[i];
@@ -323,102 +385,10 @@ router.post(
 				}
 			}
 			await Movie.bulkWrite(writes);
-			// await User.updateOne(
-			// 	{ _id: username },
-			// 	{ $set: { recommended: recommendedMovies } }
-			// );
-			// await Movie.aggregate([
-			// 	{
-			// 		$match: {
-			// 			$expr: {
-			// 				$and: [
-			// 					{
-			// 						$in: [username, "$score._id"]
-			// 					}
-			// 				]
-			// 			}
-			// 		}
-			// 	},
-			// 	{
-			// 		$addFields: {
-			// 			score: {
-			// 				$filter: {
-			// 					input: "$score",
-			// 					as: "el",
-			// 					cond: {
-			// 						$eq: ["$$el._id", username]
-			// 					}
-			// 				}
-			// 			}
-			// 		}
-			// 	},
-			// 	{
-			// 		$set: {
-			// 			score: {
-			// 				$arrayElemAt: ["$score", 0]
-			// 			}
-			// 		}
-			// 	},
-			// 	{
-			// 		$lookup: {
-			// 			from: "users",
-			// 			let: {
-			// 				movie_id: "$_id",
-			// 				user_id: "$score._id"
-			// 			},
-			// 			pipeline: [
-			// 				{
-			// 					$match: {
-			// 						$expr: {
-			// 							$eq: ["$$user_id", "$_id"]
-			// 						}
-			// 					}
-			// 				},
-			// 				{
-			// 					$unwind: {
-			// 						path: "$recommended"
-			// 					}
-			// 				},
-			// 				{
-			// 					$match: {
-			// 						$expr: {
-			// 							$eq: ["$$movie_id", "$recommended._id"]
-			// 						}
-			// 					}
-			// 				},
-			// 				{
-			// 					$project: {
-			// 						"recommended.score": 1
-			// 					}
-			// 				},
-			// 				{
-			// 					$set: {
-			// 						score: "$recommended.score"
-			// 					}
-			// 				},
-			// 				{
-			// 					$unset: ["recommended"]
-			// 				}
-			// 			],
-			// 			as: "score.score"
-			// 		}
-			// 	},
-			// 	{
-			// 		$set: {
-			// 			"score.score": {
-			// 				$arrayElemAt: ["$score.score", 0]
-			// 			}
-			// 		}
-			// 	},
-			// 	{
-			// 		$set: {
-			// 			"score.score": "$score.score.score"
-			// 		}
-			// 	}
-			// ]);
-			// recommendedMovies = recommendedMovies.sort(
-			// 	(a, b) => b.score - a.score
-			// );
+			const [status, statusErr] = await update_user_status(
+				username,
+				"success"
+			);
 			return res.status(200).json({
 				status: 200,
 				message: "Successfully updated users recommendations"
@@ -432,9 +402,9 @@ router.post("/movie", async (req, res, next) => {
 	const filterParams = req.body.params;
 	const { num_per_page, page, filter } = filterParams;
 
-	const movies = req.app.get("MOVIES").filter((movie) => {
-		return filter ? movie.filter.includes(filter) : true;
-	});
+	// const movies = req.app.get("MOVIES").filter((movie) => {
+	// 	return filter ? movie.filter.includes(filter) : true;
+	// });
 
 	// Get movie info to find recommendation for
 	let target_movie;
@@ -450,9 +420,21 @@ router.post("/movie", async (req, res, next) => {
 
 	// Create map from tags for target movie
 	let target_movie_tags = target_movie.tags;
-	let target_movie_tags_map = new Map();
+	let target_movie_tags_to_index_map = new Map();
 	target_movie_tags.forEach((tag, i) => {
-		target_movie_tags_map.set(tag, i);
+		target_movie_tags_to_index_map.set(tag, i);
+	});
+
+	const movies = req.app.get("MOVIES").filter((movie) => {
+		let found = false;
+		for (const tag of movie.tags) {
+			const index = target_movie_tags_to_index_map.get(tag._id);
+			if (index !== undefined) {
+				found = true;
+				break;
+			}
+		}
+		return found;
 	});
 
 	// Get avg score from all movies in database
@@ -474,7 +456,7 @@ router.post("/movie", async (req, res, next) => {
 		"sparse"
 	);
 	target_movie.tags.forEach((tag) => {
-		const index = target_movie_tags_map.get(tag);
+		const index = target_movie_tags_to_index_map.get(tag);
 		if (index !== undefined) {
 			search_vector.set([0, index], 1);
 		}
@@ -491,18 +473,18 @@ router.post("/movie", async (req, res, next) => {
 			"sparse"
 		);
 		movie.tags.forEach((tag) => {
-			const index = target_movie_tags_map.get(tag._id);
+			const index = target_movie_tags_to_index_map.get(tag._id);
 			if (index !== undefined) {
 				let tfidf = tag.idf;
-				let corrected_vote_average =
-					(movie.vote_count * movie.vote_average +
-						movie.vote_average +
-						0) /
+				let corrected_rating_average =
+					(movie.vote_average * (movie.vote_count + 1)) /
 					(movie.vote_count + 2);
-				let ratingWeight = Math.pow(
-					corrected_vote_average / all_movies_average_score,
-					5
-				);
+
+				const correction =
+					corrected_rating_average - all_movies_average_score;
+				let ratingWeight = 0;
+				if (correction >= 0) ratingWeight = Math.exp(correction);
+
 				movieVector.set([0, index], tfidf * ratingWeight);
 			}
 		});
@@ -519,10 +501,12 @@ router.post("/movie", async (req, res, next) => {
 	}
 
 	recommendations = recommendations.sort((a, b) => b.score - a.score);
+	const total = recommendations.length;
 	recommendations = recommendations.slice(
-		page * num_per_page,
-		page * num_per_page + num_per_page
+		(page - 1) * num_per_page,
+		(page - 1) * num_per_page + num_per_page
 	);
-	return res.status(200).json({ recommendations });
+	const total_pages = Math.ceil(total / num_per_page);
+	return res.status(200).json({ recommendations, total, total_pages });
 });
 module.exports = router;

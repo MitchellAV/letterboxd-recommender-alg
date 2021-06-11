@@ -14,7 +14,8 @@ app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 
 // Routes
-app.use("/api", require("./routes/api"));
+app.use("/", require("./routes/api"));
+
 app.use((err, req, res, next) => {
 	console.error(err);
 	res.status(err.status).json(err);
@@ -58,7 +59,7 @@ mongoose
 		app.set("MOVIES", MOVIES);
 		app.listen(
 			process.env.PORT || 8080,
-			console.log("Server started on localhost:3000")
+			console.log(`Server started on port ${process.env.PORT || 8080}`)
 		);
 	})
 	.catch((err) => console.error(err));

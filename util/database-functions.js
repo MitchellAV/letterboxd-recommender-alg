@@ -1,4 +1,15 @@
 const Movie = require("../models/movie");
+const User = require("../models/user");
+
+const update_user_status = async (username, status) => {
+	try {
+		const data = await User.findByIdAndUpdate(username, { status: status });
+		return [data, undefined];
+	} catch (err) {
+		console.error(err);
+		return [undefined, err];
+	}
+};
 
 const update_tags = async () => {
 	try {
@@ -48,4 +59,4 @@ const update_tags = async () => {
 		console.error(err);
 	}
 };
-module.exports = { update_tags };
+module.exports = { update_tags, update_user_status };

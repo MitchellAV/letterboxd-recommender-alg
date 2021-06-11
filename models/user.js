@@ -14,10 +14,11 @@ const followingSchema = new Schema({
 
 const userSchema = new Schema(
 	{
-		_id: { type: String },
+		_id: { type: String, lowercase: true },
 		movies: [movieSchema],
 		watchList: [watchListSchema],
-		following: [followingSchema]
+		following: [followingSchema],
+		status: { type: String, enum: ["success", "failed", "working"] }
 	},
 	{ timestamps: true }
 );
