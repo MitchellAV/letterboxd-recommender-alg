@@ -1,13 +1,13 @@
-const math = require("mathjs");
-const axios = require("axios");
+import math from "mathjs";
+import axios from "axios";
 
 const fs = require("fs").promises;
-const fsSync = require("fs");
+import fsSync from "fs";
 
 // const { filterDatabase } = require("./filter");
 // const { TF_IDF } = require("./tf-idf");
 
-const get_database = (start, stop, path) => {
+export const get_database = (start, stop, path) => {
 	const files = fsSync.readdirSync(path);
 	let database = [];
 	stop = stop > files.length ? files.length : stop;
@@ -27,7 +27,7 @@ const get_database = (start, stop, path) => {
  * @param {Array} database Array of Objects containing a tags property contatining an Array of String tags
  */
 
-const gen_ref_tags = async (database) => {
+export const gen_ref_tags = async (database) => {
 	let ref_tags;
 
 	ref_tags = [];
@@ -46,7 +46,7 @@ const gen_ref_tags = async (database) => {
 
 	return ref_tags;
 };
-const avg_vectors = (vectors) => {
+export const avg_vectors = (vectors) => {
 	let sum_vectors = Array(vectors.size()[0]).fill(0);
 	vectors = vectors.toArray();
 	vectors.forEach((vector) => {
@@ -59,7 +59,7 @@ const avg_vectors = (vectors) => {
 	let avg_vector = sum_vectors.map((x) => x / max);
 	return avg_vector;
 };
-const cosine_similarity = (vectorA, vectorB) => {
+export const cosine_similarity = (vectorA, vectorB) => {
 	// vectorA = math.matrix(vectorA, "dense");
 	// vectorB = math.matrix(vectorB, "dense");
 	const a_norm = math.hypot(vectorA);
@@ -85,7 +85,7 @@ const cosine_similarity = (vectorA, vectorB) => {
 	return { score, maxIndex };
 };
 
-const is_in_array = (array, target) => {
+export const is_in_array = (array, target) => {
 	let found = false;
 	for (let i = 0; i < array.length; i++) {
 		const obj = array[i];
@@ -95,7 +95,7 @@ const is_in_array = (array, target) => {
 	}
 	return found;
 };
-const save_multiple_files = (matrix, name) => {
+export const save_multiple_files = (matrix, name) => {
 	let json = { posts: [] };
 	let page = 0;
 	let itemsPerPage = 1000;
@@ -112,7 +112,7 @@ const save_multiple_files = (matrix, name) => {
 		}
 	}
 };
-const get_TF_IDF_Vectors = async (
+export const get_TF_IDF_Vectors = async (
 	filtered_database,
 	ref_tags,
 	count_books_tag,
@@ -142,7 +142,7 @@ const get_TF_IDF_Vectors = async (
 
 	return database_vectors;
 };
-const get_recommended = async (
+export const get_recommended = async (
 	single_vector,
 	database_vectors,
 	database,
@@ -197,7 +197,7 @@ const get_recommended = async (
 	}
 	return recommend;
 };
-const filter_recommended = (
+export const filter_recommended = (
 	recommended_list,
 	ignore_list,
 	filterlist,
@@ -236,7 +236,7 @@ const filter_recommended = (
 	// return list of
 	return recommended_list.slice(0, num_results);
 };
-const count_docs_with_tag = (tag, all_books) => {
+export const count_docs_with_tag = (tag, all_books) => {
 	let count = 0;
 	for (let i = 0; i < all_books.length; i++) {
 		const book_tags = all_books[i].tags;
@@ -250,7 +250,7 @@ const count_docs_with_tag = (tag, all_books) => {
 	}
 	return count;
 };
-const gen_tag_count = (all_books, ref_tags) => {
+export const gen_tag_count = (all_books, ref_tags) => {
 	let count_books_tag = [];
 	const ref_tags_length = ref_tags.length;
 	for (let i = 0; i < ref_tags_length; i++) {
@@ -263,7 +263,7 @@ const gen_tag_count = (all_books, ref_tags) => {
 	}
 	return count_books_tag;
 };
-const get_tag_count = async (all_books, ref_tags, name) => {
+export const get_tag_count = async (all_books, ref_tags, name) => {
 	let count_books_tag;
 	try {
 		count_books_tag = require(`./json/${name}_tag_count.json`).list;
@@ -282,7 +282,7 @@ const get_tag_count = async (all_books, ref_tags, name) => {
 	return count_books_tag;
 };
 
-const download_image = async (url, image_path) =>
+export const download_image = async (url, image_path) =>
 	axios({
 		url,
 		responseType: "stream"
@@ -296,7 +296,7 @@ const download_image = async (url, image_path) =>
 			})
 	);
 
-const scrapeThumbnails = async (database) => {
+export const scrapeThumbnails = async (database) => {
 	const database_length = database.length;
 	for (let i = 0; i < database_length; i++) {
 		const movie = database[i];

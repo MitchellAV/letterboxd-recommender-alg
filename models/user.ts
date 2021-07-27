@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 const Schema = mongoose.Schema;
 
 const movieSchema = new Schema({
@@ -14,7 +14,7 @@ const followingSchema = new Schema({
 
 const userSchema = new Schema(
 	{
-		_id: { type: String, lowercase: true },
+		_id: { type: String },
 		movies: [movieSchema],
 		watchList: [watchListSchema],
 		following: [followingSchema],
@@ -25,4 +25,4 @@ const userSchema = new Schema(
 
 const User = mongoose.model("User", userSchema);
 
-module.exports = User;
+export default User;

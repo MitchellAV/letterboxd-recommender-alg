@@ -1,7 +1,7 @@
-const Movie = require("../models/movie");
-const User = require("../models/user");
+import Movie from "../models/movie";
+import User from "../models/user";
 
-const update_user_status = async (username, status) => {
+export const update_user_status = async (username, status) => {
 	try {
 		const data = await User.findByIdAndUpdate(username, { status: status });
 		return [data, undefined];
@@ -11,7 +11,7 @@ const update_user_status = async (username, status) => {
 	}
 };
 
-const update_tags = async () => {
+export const update_tags = async () => {
 	try {
 		const total_num_documents = await Movie.countDocuments({});
 		await Movie.aggregate([
@@ -59,4 +59,3 @@ const update_tags = async () => {
 		console.error(err);
 	}
 };
-module.exports = { update_tags, update_user_status };

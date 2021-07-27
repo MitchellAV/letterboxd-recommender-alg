@@ -1,9 +1,10 @@
-const dotenv = require("dotenv").config();
-const express = require("express");
-const cors = require("cors");
-
-const mongoose = require("mongoose");
-const Movie = require("./models/movie");
+import { NextFunction, Request, Response } from "express";
+import { Error } from "./util/types";
+import express from "express";
+import cors from "cors";
+require("dotenv").config();
+import Movie from "./models/movie";
+import mongoose from "mongoose";
 
 const app = express();
 
@@ -15,20 +16,21 @@ app.use(express.json());
 
 // Routes
 app.use("/", require("./routes/api"));
+app.use("/", require("./routes/movie"));
 
-app.use((err, req, res, next) => {
+app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 	console.error(err);
-	res.status(err.status).json(err);
+	return res.status(err.status).json(err);
 });
 
 mongoose
-	.connect(process.env.MONGODB_URI, {
+	.connect(process.env.MONGODB_URI as string, {
 		useNewUrlParser: true,
 		useUnifiedTopology: true,
 		useFindAndModify: false,
 		useCreateIndex: true
 	})
-	.then(async (result) => {
+	.then(async () => {
 		console.log("Sucessfully Connected to MongoDB Atlas Database");
 		const MOVIES = await Movie.aggregate([
 			{
@@ -54,11 +56,11 @@ mongoose
 				}
 			}
 		]);
+		console.log(MOVIES[0]);
 
 		console.log("Movies loaded");
 		app.set("MOVIES", MOVIES);
-		app.listen(
-			process.env.PORT || 8080,
+		app.listen(process.env.PORT || 8080, () =>
 			console.log(`Server started on port ${process.env.PORT || 8080}`)
 		);
 	})

@@ -4,8 +4,8 @@
 	"description": "",
 	"main": "index.js",
 	"scripts": {
-		"start": "node --max-old-space-size=2000 server.js",
-		"dev": "nodemon --max-old-space-size=2000 server.js",
+		"start": "tsc && node --max-old-space-size=2000 server.js",
+		"dev": "nodemon server.ts",
 		"update": "node cron-job.js"
 	},
 	"repository": {
@@ -17,21 +17,29 @@
 	"license": "ISC",
 	"dependencies": {
 		"axios": "^0.21.1",
-		"cheerio": "^1.0.0-rc.5",
+		"cheerio": "^1.0.0-rc.10",
 		"cors": "^2.8.5",
-		"dotenv": "^8.2.0",
+		"dotenv": "^8.6.0",
 		"express": "^4.17.1",
-		"express-validator": "^6.10.0",
-		"mathjs": "^8.1.1",
-		"mongoose": "^5.11.16",
+		"express-validator": "^6.12.0",
+		"mathjs": "^9.4.2",
+		"mongoose": "^5.12.14",
 		"puppeteer": "^5.5.0",
 		"puppeteer-extra": "^3.1.15",
 		"puppeteer-extra-plugin-adblocker": "^2.11.10",
-		"puppeteer-extra-plugin-recaptcha": "^3.3.0",
-		"puppeteer-extra-plugin-stealth": "^2.6.7"
+		"puppeteer-extra-plugin-recaptcha": "^3.4.0",
+		"puppeteer-extra-plugin-stealth": "^2.7.8"
 	},
 	"devDependencies": {
-		"nodemon": "^2.0.6"
+		"@types/cheerio": "^0.22.29",
+		"@types/cors": "^2.8.10",
+		"@types/express": "^4.17.12",
+		"@types/mongoose": "^5.11.97",
+		"@types/node": "^15.12.2",
+		"@types/puppeteer": "^5.4.3",
+		"nodemon": "^2.0.6",
+		"ts-node": "^10.0.0",
+		"typescript": "^4.3.3"
 	},
 	"bugs": {
 		"url": "https://github.com/MitchellAV/letterboxd-recommender-alg/issues"

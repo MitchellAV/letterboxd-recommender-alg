@@ -1,7 +1,7 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 const Schema = mongoose.Schema;
 
-const hasOverview = (str) => {
+const hasOverview = (str: string): boolean => {
 	return str !== "" && str.toLowerCase() !== "none available";
 };
 
@@ -61,6 +61,5 @@ const movieSchema = new Schema(
 	},
 	{ timestamps: true }
 );
-
 const Movie = mongoose.model("Movie", movieSchema);
-module.exports = Movie;
+export default Movie;
